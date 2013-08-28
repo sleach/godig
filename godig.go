@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/unbound"
-    "io/ioutil"
 	"os"
-    "syscall"
 	"strconv"
 	"strings"
 )
@@ -15,9 +13,11 @@ import (
 var query = map[string]string{
 	"server": "",
 	"qname":  ".",
-	"qtype":  "A",
-	"qclass": "IN",
+	"qtype":  "ns",
+	"qclass": "in",
 }
+
+var option_output string = "text"
 
 func invalidArg(message string) {
 	log.Fatalf("ERROR: Invalid argument %s\n", message)
@@ -65,31 +65,31 @@ func HandleArgs(args []string) {
 }
 
 func main() {
-    var resolv_conf, delete_file string
 	args := os.Args
 	HandleArgs(args)
     u := unbound.New()
     defer u.Destroy()
     if query["server"] != "" {
-        tmp_file, err := ioutil.TempFile("/tmp", "godig")
-        if err != nil {
-            log.Fatalf("ERROR: Unable to open tmp file %s\n", err)
-        }
-        fmt.Fprintf(tmp_file, "nameserver %s\n", query["server"])
-        resolv_conf = tmp_file.Name()
-        delete_file = tmp_file.Name()
-        tmp_file.Close()
         fmt.Printf("Will use nameserver %s\n", query["server"])
+        u.SetFwd(query["server"])
     } else {
-        resolv_conf = "/etc/resolv.conf"
+        u.ResolvConf("/etc/resolv.conf")
     }
-    u.ResolvConf(resolv_conf)
+    if option_output == "text" {
+        fmt.Printf("\n; <<>> GoDig v0.1 <<>> %s %s %s\n", query["qname"], query["qtype"], query["qclass"])
+        fmt.Printf(";; global options: TODO\n")
+        fmt.Printf(";; Got answer:\n")
+        fmt.Printf(";; ->>HEADER<<- opcode: TODO, status: TODO, id: TODO\n")
+        fmt.Printf(";; flags: TODO; QUERY: TODO, ANSWER: TODO, AUTHORITY: TODO, ADDITIONAL: TODO\n\n")
+        fmt.Printf(";; QUESTION SECTION: \n")
+        fmt.Printf(";%-40s%-10s%-10s\n\n", strings.ToUpper(query["qname"]), strings.ToUpper(query["qclass"]), strings.ToUpper(query["qtype"]))
+    }
     resp, err := u.Resolve(query["qname"], dns.StringToType[query["qtype"]], dns.StringToClass[query["qclass"]])
     if err != nil {
         log.Fatalf("ERROR: query failed: %s\n", err) 
     } else {
         if !resp.HaveData {
-            fmt.Printf("Got no data")
+            fmt.Printf("Got no data\n")
         } else {
             fmt.Printf("; Answer:\n")
             for _, res := range resp.AnswerPacket.Answer {
@@ -105,7 +105,10 @@ func main() {
             }
         }
     }
-    if delete_file != "" {
-        syscall.Unlink(delete_file)
+    if option_output == "text" {
+        fmt.Printf(";; Query time: TODO\n")
+        fmt.Printf(";; SERVER: TODO#53(TODO)\n")
+        fmt.Printf(";; WHEN: TODO\n")
+        fmt.Printf(";; MSG SIZE  rcvd: TODO\n\n")
     }
 }
