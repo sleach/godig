@@ -42,6 +42,11 @@ var IntOptions = map[string] int {
     "ndots": 1,
     "bufsize": 0,
     "edns": -1,
+    "port": 53,
 }
 
-var TrustedKey string = "trusted-key.key"
+var StringOptions = map[string] string {
+    "trusted-key": "trusted-key.key",
+    "client": "",
+    "output": "text",
+}
